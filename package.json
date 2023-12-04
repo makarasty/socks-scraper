@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "bluebird": "^3.7.2",
+    "socks": "^2.7.1",
+    "undici": "^5.28.2"
+  },
+  "name": "github-proxy-scraper",
+  "version": "1.0.0",
+  "description": "uses https://github.com/casals-ar/proxy-list to get a list of proxies",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "node example.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makarasty/ProxyScraper.git"
+  },
+  "keywords": [
+    "proxy"
+  ],
+  "author": "MaKarastY",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/makarasty/ProxyScraper/issues"
+  },
+  "homepage": "https://github.com/makarasty/ProxyScraper#readme"
+}
