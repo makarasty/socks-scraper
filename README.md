@@ -3,7 +3,7 @@
 
 ![image](https://github.com/makarasty/ProxyScraper/assets/71918286/0a4e90a1-0998-4fc3-be65-dfd6593ff571)
 
-#Example
+# Example
 ```js
 const { ProxyScraper, FilterLatency } = require('github-proxy-scraper');
 
