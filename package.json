@@ -4,7 +4,7 @@
 		"undici": "^6.10.1"
 	},
 	"name": "socks-scraper",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Uses your references to obtain and verify proxies ",
 	"main": "index.js",
 	"devDependencies": {},
