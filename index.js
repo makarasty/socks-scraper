@@ -1,6 +1,9 @@
 const { SocksClient } = require('socks');
 const { request } = require('undici');
+const { Worker } = require('node:worker_threads');
+const path = require('path')
 
+const workerPath = path.join(__dirname, 'worker.js')
 const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
 
 /**
@@ -14,9 +17,15 @@ const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
 /**
  * like { checkURL, checkURLPort, headers}
  * @typedef {Object} SocksScraper.ClassOptions
- * @property {?string} checkURL
- * @property {?number} checkURLPort
  * @property {?SocksScraper.IncomingHttpHeaders} headers
+*/
+
+/**
+ * @typedef {Object} IDefaultMessage
+ * @property {SocksScraper.SocksProxyType} sockType
+ * @property {number} timeout
+ * @property {string[]} proxyChunk 
+ * @property {number} chunkSize
  */
 
 /**
@@ -33,7 +42,7 @@ class SocksScraper {
 	 * @param {?string[]} sites 
 	 * @param {?SocksScraper.ClassOptions} options 
 	 */
-	constructor(sites = [], options = { checkURL: null, checkURLPort: null, headers: null }) {
+	constructor(sites = [], options = { headers: null }) {
 
 		/**
 		 * @public
@@ -43,22 +52,14 @@ class SocksScraper {
 
 		/**
 		 * @private
-		 * @type {typeof options.checkURL}
 		 */
-		this.checkURL = options?.checkURL || 'http://ifconfig.me/ip'
-
-		/**
-		 * @private
-		 * @type {typeof options.checkURLPort}
-		 */
-		this.checkURLPort = options?.checkURLPort || 80
+		this.unCheckedProxies = []
 
 		/**
 		 * @private
 		 * @type {typeof options.headers}
 		 */
 		this.headers = options?.headers || {
-			"content-type": "application/x-www-form-urlencoded",
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
 			'Connection': 'keep-alive'
 		}
@@ -103,10 +104,9 @@ class SocksScraper {
 			const responseText = await response.body.text()
 
 			const proxyList = responseText.split('\n').filter((x) => x.match(ipPortRegex))
-
 			return proxyList
 		} catch (error) {
-			return []
+			return null
 		}
 	}
 
@@ -118,25 +118,36 @@ class SocksScraper {
 	 * @param {number} timeout 
 	 * @returns {Promise<?SocksScraper.IDefaultProxy>}
 	 */
-	async checkSocksProxy(type, address, timeout = 5000) {
-		try {
-			const [host, portStr] = address.split(':');
-			const port = Number(portStr);
+	static async checkSocksProxy(type, address, timeout = 5000, checkURL = 'http://ip-api.com/ip', checkURLPort = 80) {
+		const [host, portStr] = address.split(':');
+		const port = Number(portStr);
 
-			const startTime = performance.now();
-			const result = await SocksClient.createConnection({
+		const startTime = performance.now();
+
+		try {
+			await SocksClient.createConnection({
 				timeout,
 				command: 'connect',
-				destination: { host: this.checkURL, port: this.checkURLPort },
+				destination: { host: checkURL, port: checkURLPort },
 				proxy: { host, port, type }
 			})
-				.then(() => ({ address, host, port, latency: Math.round(performance.now() - startTime) }))
-				.catch(() => null);
+			const latency = Math.round(performance.now() - startTime)
 
-			return result;
+			return { address, host, port, latency }
 		} catch (error) {
 			return null
 		}
+	}
+
+	/**
+	 * @public
+	 * @returns {Promise<void>}
+	 */
+	async updateUncheckedProxies() {
+		const sitesPromise = this.sites.map(async (siteUrl) => await this.getProxiesFromRawSite(siteUrl))
+		const notTestedProxyList = await Promise.all(sitesPromise)
+
+		this.unCheckedProxies = Array.prototype.concat(...notTestedProxyList)
 	}
 
 	/**
@@ -144,24 +155,35 @@ class SocksScraper {
 	 * @public
 	 * @param {SocksScraper.SocksProxyType} sockType 
 	 * @param {number} timeout 
-	 * @returns {Promise<SocksScraper.IDefaultProxy[]>}
+	 * @param {number} [chunkSize=10000] number of Promise.all treatments for 1 worker
+	 * @param {number} [workerCount=1] count of workers
+	 * @returns {Promise<?SocksScraper.IDefaultProxy[]>}
 	 */
-	async getWorkedSocksProxies(sockType, timeout) {
-		const sitesPromise = this.sites.map(async (siteUrl) => {
-			return await this.getProxiesFromRawSite(siteUrl)
-		})
+	async getWorkedSocksProxies(sockType, timeout, workerCount = 1, chunkSize = 10000) {
+		const workers = [], workedProxyLists = [];
+		const proxyChunkSize = Math.ceil(this.unCheckedProxies.length / workerCount);
 
-		const notTestedProxyList = await Promise.all(sitesPromise)
+		for (let i = 0; i < workerCount; i++) {
+			const worker = new Worker(workerPath);
 
-		const NTPListPromise = notTestedProxyList.flat().flat()
-			.map(async (proxyAddress) => {
-				return await this.checkSocksProxy(sockType, proxyAddress, timeout)
-			})
+			worker.on('message', (workedProxyList) => {
+				workedProxyLists.push(...workedProxyList);
+			});
 
-		const workedProxyList = await Promise.all(NTPListPromise)
-		const clearList = workedProxyList.filter((proxy) => Boolean(proxy))
+			const proxyChunk = this.unCheckedProxies.slice(i * proxyChunkSize, (i + 1) * proxyChunkSize);
+			worker.postMessage({ sockType, timeout, proxyChunk, chunkSize });
+			workers.push(worker);
+		}
 
-		return clearList
+		await Promise.all(workers.map((worker) => new Promise((resolve) => {
+			worker.once('message', resolve);
+		})));
+
+		for (const worker of workers) {
+			worker.terminate();
+		}
+
+		return workedProxyLists;
 	}
 }
 
