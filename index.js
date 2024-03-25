@@ -59,6 +59,8 @@ class SocksScraper {
 		 */
 		this.headers = options?.headers || {
 			"content-type": "application/x-www-form-urlencoded",
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+			'Connection': 'keep-alive'
 		}
 	}
 
@@ -93,14 +95,18 @@ class SocksScraper {
 	 * Get a list of ip:port proxies ignoring garbage comments etc.
 	 * @public
 	 * @param {string} url 
-	 * @returns {Promise<string[]>}
+	 * @returns {Promise<string[] | []>}
 	 */
 	async getProxiesFromRawSite(url) {
-		const response = await request(url, { method: "GET", headers: this.headers })
-		const responseText = await response.body.text()
+		try {
+			const response = await request(url, { method: "GET", headers: this.headers })
+			const responseText = await response.body.text()
 
-		const proxyList = responseText.split('\n').filter((x) => x.match(ipPortRegex))
-		return proxyList
+			const proxyList = responseText.split('\n').filter((x) => x.match(ipPortRegex))
+			return proxyList
+		} catch (error) {
+			return []
+		}
 	}
 
 	/**
@@ -112,20 +118,24 @@ class SocksScraper {
 	 * @returns {Promise<?SocksScraper.IDefaultProxy>}
 	 */
 	async checkSocksProxy(type, address, timeout = 5000) {
-		const [host, portStr] = address.split(':');
-		const port = Number(portStr);
+		try {
+			const [host, portStr] = address.split(':');
+			const port = Number(portStr);
 
-		const startTime = performance.now();
-		const result = await SocksClient.createConnection({
-			timeout,
-			command: 'connect',
-			destination: { host: this.checkURL, port: this.checkURLPort },
-			proxy: { host, port, type }
-		})
-			.then(() => ({ address, host, port, latency: Math.round(performance.now() - startTime) }))
-			.catch(() => null);
+			const startTime = performance.now();
+			const result = await SocksClient.createConnection({
+				timeout,
+				command: 'connect',
+				destination: { host: this.checkURL, port: this.checkURLPort },
+				proxy: { host, port, type }
+			})
+				.then(() => ({ address, host, port, latency: Math.round(performance.now() - startTime) }))
+				.catch(() => null);
 
-		return result;
+			return result;
+		} catch (error) {
+			return null
+		}
 	}
 
 	/**
