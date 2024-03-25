@@ -1,121 +1,158 @@
 const { SocksClient } = require('socks');
-const { fetch } = require('undici');
-const Promise = require('bluebird');
+const { request } = require('undici');
 
-class ProxyScraper {
-	constructor(timeout = 4000) {
-		this.timeout = timeout
-		this.destination = {
-			host: 'ifconfig.me',
-			port: 80
-		};
-	}
+const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
 
+/**
+ * @typedef {import('socks/typings/common/constants').SocksProxyType} SocksScraper.SocksProxyType
+ */
+
+/**
+ * @typedef {import('undici/types/header').IncomingHttpHeaders} SocksScraper.IncomingHttpHeaders
+ */
+
+/**
+ * like { checkURL, checkURLPort, headers}
+ * @typedef {Object} SocksScraper.ClassOptions
+ * @property {?string} checkURL
+ * @property {?number} checkURLPort
+ * @property {SocksScraper.IncomingHttpHeaders} headers
+ */
+
+/**
+ * like { address, host, port, latency }
+ * @typedef {Object} SocksScraper.IDefaultProxy
+ * @property {string} address
+ * @property {string} host
+ * @property {number} port
+ * @property {number} latency
+ */
+
+class SocksScraper {
 	/**
-	 * @private
-	 * @param {string} type - Type of proxy list (socks5 or socks4)
-	 * @return {string}
+	 * @param {string[]} sites 
+	 * @param {SocksScraper.ClassOptions} options 
 	 */
-	GetProxyListUrl(type) {
-		return `https://raw.githubusercontent.com/casals-ar/proxy-list/main/${type}`;
-	}
+	constructor(sites = [], options = {}) {
 
-	/**
-	 * @private
-	 * @param {string} type
-	 * @return {Promise<string>} A promise that resolves to the list of proxies as a string.
-	 */
-	async FetchProxyList(type) {
-		try {
-			const response = await fetch(this.GetProxyListUrl(type));
-			if (!response.ok) {
-				throw new Error('Network response was not ok.');
-			}
-			return response.text();
-		} catch (error) {
-			throw new Error(`Failed to access url: ${error.message}`);
+		/**
+		 * @readonly
+		 * @public
+		 * @type {sites}
+		 */
+		this.sites = sites
+
+		/**
+		 * @private
+		 * @type {options.checkURL}
+		 */
+		this.checkURL = options?.checkURL || 'http://ifconfig.me/ip'
+
+		/**
+		 * @private
+		 * @type {options.checkURLPort}
+		 */
+		this.checkURLPort = options?.checkURLPort || 80
+
+		/**
+		 * @private
+		 * @type {options.headers}
+		 */
+		this.headers = options?.headers || {
+			"content-type": "application/x-www-form-urlencoded",
 		}
 	}
 
 	/**
-	 * @private
-	 * @param {string} address
-	 * @return {Object|number} Returns an object if successful, or 0 on failure.
+	 * Add the site to the list of sites on which free proxies are placed, the main thing that the site was raw or the like
+	 * @public
+	 * @param {string[]} sites 
 	 */
-	async TestProxy(type, address) {
-		let [host, port] = address.split(':');
+	addSites(sites) {
+		this.sites.push(...sites)
+	}
 
-		port = +port
+	/**
+	 * Clears the list of sites from which the tool receives proxies
+	 * @public
+	 */
+	clearSites() {
+		this.sites = []
+	}
 
-		const proxyOptions = {
-			command: 'connect',
-			timeout: this.timeout,
-			destination: this.destination,
-			proxy: { host, port, type }
-		};
+	/**
+	 * at `0` the best at `-1` the worst
+	 * @public
+	 * @param {SocksScraper.IDefaultProxy[]} proxies 
+	 * @returns {SocksScraper.IDefaultProxy[]}
+	 */
+	static filterByLatency(proxies) {
+		return proxies.sort((a, b) => a.latency - b.latency);
+	}
+
+	/**
+	 * Get a list of ip:port proxies ignoring garbage comments etc.
+	 * @public
+	 * @param {string} url 
+	 * @returns {Promise<string[]>}
+	 */
+	async getProxiesFromRawSite(url) {
+		const response = await request(url, { method: "GET", headers: this.headers })
+		const responseText = await response.body.text()
+
+		const proxyList = responseText.split('\n').filter((x) => x.match(ipPortRegex))
+		return proxyList
+	}
+
+	/**
+	 * Check ip:port to see if it is a proxy and if it works at all
+	 * @public
+	 * @param {SocksScraper.SocksProxyType} type 
+	 * @param {string} address 
+	 * @param {number} timeout 
+	 * @returns {Promise<?SocksScraper.IDefaultProxy>}
+	 */
+	async checkSocksProxy(type, address, timeout = 5000) {
+		const [host, portStr] = address.split(':');
+		const port = Number(portStr);
 
 		const startTime = performance.now();
-
-		const result = await SocksClient.createConnection(proxyOptions)
-			.then(() => ({ address, host, port, latency: +(performance.now() - startTime).toFixed(0) }))
-			.catch(() => 0);
+		const result = await SocksClient.createConnection({
+			timeout,
+			command: 'connect',
+			destination: { host: this.checkURL, port: this.checkURLPort },
+			proxy: { host, port, type }
+		})
+			.then(() => ({ address, host, port, latency: Math.round(performance.now() - startTime) }))
+			.catch(() => null);
 
 		return result;
 	}
 
 	/**
-	 * @private
-	 * @param {String} type
-	 * @param {Number} [concurrency=0]
-	 * @return {Promise<Array<Object>>} A promise that resolves with a list of working proxies.
+	 * Get proxies from all added sites, check if they work and return them as SocksScraper.IDefaultProxy[]
+	 * @public
+	 * @param {SocksScraper.SocksProxyType} sockType 
+	 * @param {number} timeout 
+	 * @returns {Promise<SocksScraper.IDefaultProxy[]>}
 	 */
-	async FetchWorkedProxyList(type, concurrency = 0) {
-		const proxyText = await this.FetchProxyList(type);
+	async getWorkedSocksProxies(sockType, timeout) {
+		const sitesPromise = this.sites.map(async (siteUrl) => {
+			return await this.getProxiesFromRawSite(siteUrl)
+		})
 
-		const proxyList = proxyText.split('\n')
+		const notTestedProxyList = await Promise.all(sitesPromise)
 
-		const workedProxyList = await Promise
-			.map(proxyList, async (address) =>
-				this.TestProxy(+type.at(-1), address.trimEnd()
-				), { concurrency }
-			);
+		const NTPListPromise = notTestedProxyList.flat()
+			.map(async (proxyAddress) => {
+				return await this.checkSocksProxy(sockType, proxyAddress, timeout)
+			})
 
-		const filteredProxyList = workedProxyList.filter((proxy) => proxy)
+		const workedProxyList = await Promise.all(NTPListPromise)
+		const clearList = workedProxyList.filter((proxy) => Boolean(proxy))
 
-		return filteredProxyList
-	}
-
-	/**
-	 * Retrieves a list of working Socks5 proxies.
-	 *
-	 * @param {number} concurrency - Max number of concurrent checks
-	 * @return {Promise<Array<Object>>} Promise resolving to an array of proxies
-	 */
-	async FetchSocks5(concurrency) {
-		return this.FetchWorkedProxyList('socks5', concurrency)
-	}
-
-	/**
-	 * Retrieves a list of working Socks4 proxies.
-	 *
-	 * @param {number} concurrency - Max number of concurrent checks
-	 * @return {Promise<Array<Object>>} Promise resolving to an array of proxies
-	 */
-	async FetchSocks4(concurrency) {
-		return this.FetchWorkedProxyList('socks4', concurrency)
-	}
-
-	/**
-	 *
-	 * @param {Array<Object>} proxies
-	 * @return {Array<Object>}
-	 */
-	static FilterLatency(proxies) {
-		return proxies.sort((a, b) => a.latency - b.latency);
+		return clearList
 	}
 }
 
-module.exports = {
-	FilterLatency: ProxyScraper.FilterLatency,
-	ProxyScraper
-}
+module.exports = SocksScraper
