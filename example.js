@@ -29,7 +29,7 @@ async function master() {
 	console.log(`The best socks5 proxy is ${bestWSP5.host}:${bestWSP5.port} with latency ${bestWSP5.latency}ms`)
 
 	// Check my socks5 proxy to see if it works at all
-	const mySocks5Proxy = await socksScraper.checkSocksProxy(5, '3.122.84.99:3128', 4000)
+	const mySocks5Proxy = await socksScraper.checkSocksProxy(5, '94.131.14.66:1080', 4000)
 	const isAlive = Boolean(mySocks5Proxy)
 
 	console.log(`My socks5 proxy is ${isAlive ? 'alive' : 'dead'}`)

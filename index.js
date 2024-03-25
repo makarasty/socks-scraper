@@ -103,6 +103,7 @@ class SocksScraper {
 			const responseText = await response.body.text()
 
 			const proxyList = responseText.split('\n').filter((x) => x.match(ipPortRegex))
+
 			return proxyList
 		} catch (error) {
 			return []
@@ -152,7 +153,7 @@ class SocksScraper {
 
 		const notTestedProxyList = await Promise.all(sitesPromise)
 
-		const NTPListPromise = notTestedProxyList.flat()
+		const NTPListPromise = notTestedProxyList.flat().flat()
 			.map(async (proxyAddress) => {
 				return await this.checkSocksProxy(sockType, proxyAddress, timeout)
 			})
