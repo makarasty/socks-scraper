@@ -48,18 +48,18 @@ const wsp4 = await socksScraper.getWorkedSocksProxies(4, timeout)
 // Sort the list by latency and take the fastest proxy
 const bestWSP4 = SocksScraper.filterByLatency(wsp4)[0]
 
-console.log(`The best socks4 proxy is ${bestWSP4.ip}:${bestWSP4.port} with latency ${bestWSP4.latency}ms`)
+console.log(`The best socks4 proxy is ${bestWSP4.host}:${bestWSP4.port} with latency ${bestWSP4.latency}ms`)
 
 const wsp5 = await socksScraper.getWorkedSocksProxies(5, timeout)
 const bestWSP5 = SocksScraper.filterByLatency(wsp5)[0]
 
-console.log(`The best socks5 proxy is ${bestWSP5.ip}:${bestWSP5.port} with latency ${bestWSP5.latency}ms`)
+console.log(`The best socks5 proxy is ${bestWSP5.host}:${bestWSP5.port} with latency ${bestWSP5.latency}ms`)
 
 // Check my socks5 proxy to see if it works at all
 const mySocks5Proxy = await socksScraper.checkSocksProxy(5, '3.122.84.99:3128', 4000)
 const isAlive = Boolean(mySocks5Proxy)
 
-console.log(`My socks5 proxy is ${isAlive ? 'alive' : 'dead'}!`)
+console.log(`My socks5 proxy is ${isAlive ? 'alive' : 'dead'}`)
 console.log(mySocks5Proxy)
 ```
 ```js
@@ -68,6 +68,6 @@ My socks5 proxy is alive!
   address: '3.122.84.99:3128',
   host: '3.122.84.99',
   port: 3128,
-  latency: 100
+  latency: 32
 }
 ```

@@ -16,7 +16,7 @@ const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
  * @typedef {Object} SocksScraper.ClassOptions
  * @property {?string} checkURL
  * @property {?number} checkURLPort
- * @property {SocksScraper.IncomingHttpHeaders} headers
+ * @property {?SocksScraper.IncomingHttpHeaders} headers
  */
 
 /**
@@ -30,13 +30,12 @@ const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
 
 class SocksScraper {
 	/**
-	 * @param {string[]} sites 
-	 * @param {SocksScraper.ClassOptions} options 
+	 * @param {?string[]} sites 
+	 * @param {?SocksScraper.ClassOptions} options 
 	 */
-	constructor(sites = [], options = {}) {
+	constructor(sites = [], options = { checkURL: null, checkURLPort: null, headers: null }) {
 
 		/**
-		 * @readonly
 		 * @public
 		 * @type {sites}
 		 */
@@ -44,19 +43,19 @@ class SocksScraper {
 
 		/**
 		 * @private
-		 * @type {options.checkURL}
+		 * @type {typeof options.checkURL}
 		 */
 		this.checkURL = options?.checkURL || 'http://ifconfig.me/ip'
 
 		/**
 		 * @private
-		 * @type {options.checkURLPort}
+		 * @type {typeof options.checkURLPort}
 		 */
 		this.checkURLPort = options?.checkURLPort || 80
 
 		/**
 		 * @private
-		 * @type {options.headers}
+		 * @type {typeof options.headers}
 		 */
 		this.headers = options?.headers || {
 			"content-type": "application/x-www-form-urlencoded",
