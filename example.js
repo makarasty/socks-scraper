@@ -33,12 +33,12 @@ async function master() {
 	// Sort the list by latency and take the fastest proxy
 	const bestWSP4 = SocksScraper.filterByLatency(wsp4)[0]
 
-	console.log(`The best socks4 proxy is ${bestWSP4.host}:${bestWSP4.port} with latency ${bestWSP4.latency}ms`)
+	console.log(`The best socks4 proxy is ${bestWSP4.host}:${bestWSP4.port} with latency ${bestWSP4.latency}ms (${wsp4.length})`)
 
 	const wsp5 = await socksScraper.getWorkedSocksProxies('socks5', timeout)
 	const bestWSP5 = SocksScraper.filterByLatency(wsp5)[0]
 
-	console.log(`The best socks5 proxy is ${bestWSP5.host}:${bestWSP5.port} with latency ${bestWSP5.latency}ms`)
+	console.log(`The best socks5 proxy is ${bestWSP5.host}:${bestWSP5.port} with latency ${bestWSP5.latency}ms (${wsp5.length})`)
 
 	/* only if you have VERY good internet...
 
@@ -49,7 +49,7 @@ async function master() {
 	*/
 
 	//  Check my socks5 proxy to see if it works at all
-	const mySocks4Proxy = await SocksScraper.isAliveProxy('socks4', '3.127.62.252:80', 10000)
+	const mySocks4Proxy = await SocksScraper.isAliveProxy('socks4', '3.10.93.50:80', 10000)
 	const isAlive = Boolean(mySocks4Proxy)
 
 	console.log(`My socks4 proxy is ${isAlive ? 'alive' : 'dead'}`)
