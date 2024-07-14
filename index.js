@@ -1,75 +1,3 @@
-<<<<<<< Updated upstream
-const SocksScraper = require('socks-scraper');
-const fs = require('fs').promises;
-
-async function main() {
-	console.clear();
-
-	const socksScraper = new SocksScraper([
-		"https://raw.githubusercontent.com/casals-ar/proxy-list/main/socks5",
-        "https://raw.githubusercontent.com/casals-ar/proxy-list/main/socks4",
-        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
-        "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks4.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks4.txt",
-        "https://raw.githubusercontent.com/rdavydov/proxy-list/main/proxies/socks4.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies.txt",
-        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
-        "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks4/socks4.txt",
-        "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks5/socks5.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/archive/txt/proxies-http.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/archive/txt/proxies-https.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/archive/txt/proxies-socks4.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/archive/txt/proxies-socks5.txt",
-        "https://raw.githubusercontent.com/jetkai/proxy-list/main/archive/txt/proxies.txt",
-        "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
-        "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
-        "https://raw.githubusercontent.com/sunny9577/proxy-scraper/master/proxies.txt",
-        "https://raw.githubusercontent.com/mishakorzik/Free-Proxy/main/proxy.txt",
-        "https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS4_RAW.txt",
-        "https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS5_RAW.txt",
-        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/main/socks4.txt",
-        "https://raw.githubusercontent.com/MuRongPIG/Proxy-Master/main/socks5.txt",
-        "https://raw.githubusercontent.com/prxchk/proxy-list/main/socks4.txt",
-        "https://raw.githubusercontent.com/prxchk/proxy-list/main/socks5.txt",
-        "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks4.txt",
-        "https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks5.txt",
-        "https://raw.githubusercontent.com/opsxcq/proxy-list/master/list.txt",
-        "https://raw.githubusercontent.com/Anonym0usWork1221/Free-Proxies/main/proxy_files/socks4_proxies.txt",
-        "https://raw.githubusercontent.com/Anonym0usWork1221/Free-Proxies/main/proxy_files/socks5_proxies.txt",
-        "https://raw.githubusercontent.com/casals-ar/proxy-list/main/socks5",
-        "https://raw.githubusercontent.com/proxylist-to/proxy-list/main/socks4.txt",
-        "https://raw.githubusercontent.com/proxylist-to/proxy-list/main/socks5.txt",
-        'https://api.proxyscrape.com/?request=displayproxies&status=alive&proxytype=socks4',
-        'https://api.proxyscrape.com/?request=displayproxies&status=alive&proxytype=socks5',
-        'https://openproxylist.xyz/socks4.txt',
-        'https://openproxylist.xyz/socks5.txt',
-        "https://api.proxyscrape.com/?request=displayproxies&status=alive"
-	]);
-    console.log('Updating unchecked proxies...');
-
-    await socksScraper.updateUncheckedProxies();
-    
-    console.log('Checking proxies...');
-    
-    const timeout = 10000
-    
-    const type = 'socks5'
-    const wsp = await socksScraper.getWorkedSocksProxies(type, timeout)
-    const data = wsp.map((p) => p.address).join('\n');
-    await fs.writeFile(`proxies-s${type}.txt`, data)
-    
-    console.log(`Proxies have been saved to proxies-${type}.txt`);
-    
-    const type1 = 'socks4'
-    const wsp1 = await socksScraper.getWorkedSocksProxies(type1, timeout)
-    const data1 = wsp1.map((p) => p.address).join('\n');
-    await fs.writeFile(`proxies-s${type1}.txt`, data1)
-    
-    console.log(`Proxies have been saved to proxies-${type1}.txt`);
-}
-
-main()
-=======
 const { ProxyAgent } = require('proxy-agent');
 const needle = require('needle');
 
@@ -92,9 +20,11 @@ const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
  */
 
 /**
- * like { address, latency }
+ * like { address, host, port, latency }
  * @typedef {Object} SocksScraper.IDefaultProxy
  * @property {string} address
+ * @property {string} host
+ * @property {number} port
  * @property {number} latency
  */
 
@@ -102,7 +32,7 @@ const ipPortRegex = /^(?:\d{1,3}\.){3}\d{1,3}:\d+$/;
  * @param {needle.NeedleResponse} response
  */
 function defaultProxyCallback(response) {
-	return response.body?.origin || JSON.parse(response.body)?.origin
+	return true;
 }
 
 class SocksScraper {
@@ -144,7 +74,7 @@ class SocksScraper {
 	 * @public
 	 */
 	clearSites() {
-		this.sites = []
+		this.sites.length = 0;
 	}
 
 	/**
@@ -158,7 +88,7 @@ class SocksScraper {
 	 * Clears the list of checked proxies
 	 */
 	clearCheckedProxies() {
-		this.checkedProxies = [];
+		this.sites.length = 0;
 	}
 
 	/**
@@ -202,7 +132,7 @@ class SocksScraper {
 	static async checkSocksProxy(type, address, timeout = undefined, website = undefined, checkURLPort = undefined) {
 		const newType = type === 5 ? 'socks5' : 'socks4';
 
-		return (await SocksScraper.isAliveProxy(newType, address, timeout, website)) || null;
+		return await SocksScraper.isAliveProxy(newType, address, timeout, website) || null;
 	}
 
 	/**
@@ -211,10 +141,12 @@ class SocksScraper {
 	 * @param {SocksScraper.SocksProxyType} type
 	 * @param {string} address
 	 * @param {number?} timeout
+	 * @param {string?} website
+	 * @param {Function?} callback
+	 * @param {number?} retryCount
 	 */
-	static async isAliveProxy(type, address, timeout = 6000, website = 'https://httpbin.org/ip', callback = defaultProxyCallback) {
+	static async isAliveProxy(type, address, timeout = 6000, website = 'https://discord.com', callback = defaultProxyCallback, retryCount = 0) {
 		try {
-
 			const agent = new ProxyAgent({
 				getProxyForUrl: () => `${type}://${address}`,
 				timeout,
@@ -233,14 +165,22 @@ class SocksScraper {
 			const latency = Math.round(performance.now() - startTime)
 
 			if (callback && callback(response)) {
+				const [host, portStr] = address.split(':');
+
 				return {
 					address,
+					host,
+					port: Number(portStr),
 					latency
 				}
 			}
 
 			return false
 		} catch (error) {
+			if (retryCount < 1) {
+				// Retry once more
+				return this.isAliveProxy(type, address, timeout, website, callback, retryCount + 1);
+			}
 			return false
 		}
 	}
@@ -260,24 +200,32 @@ class SocksScraper {
 	 * @public
 	 * @param {SocksScraper.SocksProxyType} sockType
 	 * @param {number} timeout
+	 * @param {number} [chunkSize=1000]
+	 * @param {string?} website
+	 * @param {Function?} callback
+	 * @param {number?} retryCount
 	 * @returns {Promise<SocksScraper.IDefaultProxy[]>}
 	 */
-	async getWorkedSocksProxies(sockType, timeout) {
-		this.clearCheckedProxies()
+	async getWorkedSocksProxies(sockType, timeout, chunkSize = 1000, website = undefined, callback = undefined, retryCount = undefined) {
+		const proxyArray = Array.from(this.unCheckedProxies);
+		const chunks = [];
 
-		const checkedProxiesPromise = Array.from(this.unCheckedProxies).map(async (a) => SocksScraper.isAliveProxy(sockType, a, timeout))
-
-		const checkedProxies = await Promise.all(checkedProxiesPromise)
-
-		for (const proxy of checkedProxies) {
-			if (!proxy) continue
-
-			this.checkedProxies.push(proxy)
+		for (let i = 0; i < proxyArray.length; i += chunkSize) {
+			chunks.push(proxyArray.slice(i, i + chunkSize));
 		}
 
-		return this.checkedProxies
+		for (const chunk of chunks) {
+			const checkedProxiesPromise = chunk.map((a) => SocksScraper.isAliveProxy(sockType, a, timeout, website, callback, retryCount));
+			const checkedProxies = await Promise.all(checkedProxiesPromise);
+
+			for (const proxy of checkedProxies) {
+				if (!proxy) continue;
+				this.checkedProxies.push(proxy);
+			}
+		}
+
+		return this.checkedProxies;
 	}
 }
 
 module.exports = SocksScraper
->>>>>>> Stashed changes
