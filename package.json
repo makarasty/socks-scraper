@@ -4,7 +4,7 @@
 		"proxy-agent": "^6.4.0"
 	},
 	"name": "socks-scraper",
-	"version": "1.1.0h",
+	"version": "1.2.0",
 	"description": "Uses your references to obtain and verify proxies ",
 	"main": "index.js",
 	"scripts": {
