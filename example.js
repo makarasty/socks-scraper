@@ -8,6 +8,11 @@ async function master() {
 		"https://raw.githubusercontent.com/casals-ar/proxy-list/main/socks4",
 		"https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
 		"https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt",
+		'https://api.proxyscrape.com/?request=displayproxies&status=alive&proxytype=socks4',
+		'https://api.proxyscrape.com/?request=displayproxies&status=alive&proxytype=socks5',
+		'https://openproxylist.xyz/socks4.txt',
+		'https://openproxylist.xyz/socks5.txt',
+		'https://raw.githubusercontent.com/sunny9577/proxy-scraper/master/proxies.txt'
 	])
 
 	// Add one more site to the list of sites on which free proxies are placed
@@ -20,7 +25,7 @@ async function master() {
 	// Gets proxies from all sites, VERY IMPORTANT: it must be called before the getWorkedSocksProxies()
 	await socksScraper.updateUncheckedProxies()
 
-	console.log('Done updating unchecked proxies!');
+	console.log(`Done updating unchecked proxies! (${socksScraper.unCheckedProxies.size})`);
 
 	// Get a list of proxies from all sites, check if they work and return the best ones
 	const wsp4 = await socksScraper.getWorkedSocksProxies('socks4', timeout)

@@ -49,15 +49,15 @@ class SocksScraper {
 
 		/**
 		 * @public
-		 * @type {string[]}
+		 * @type {Set<string>}
 		 */
-		this.unCheckedProxies = []
+		this.unCheckedProxies = new Set();
 
 		/**
 		 * @public
 		 * @type {SocksScraper.IDefaultProxy[]}
 		 */
-		this.checkedProxies = []
+		this.checkedProxies = [];
 	}
 
 	/**
@@ -81,14 +81,14 @@ class SocksScraper {
 	 * Clears the list of unchecked proxies
 	 */
 	clearUnCheckedProxies() {
-		this.unCheckedProxies = []
+		this.unCheckedProxies.clear();
 	}
 
 	/**
 	 * Clears the list of checked proxies
 	 */
 	clearCheckedProxies() {
-		this.checkedProxies = []
+		this.checkedProxies = [];
 	}
 
 	/**
@@ -186,7 +186,7 @@ class SocksScraper {
 		const sitesPromise = this.sites.map(async (siteUrl) => await this.getProxiesFromRawSite(siteUrl))
 		const notTestedProxyList = await Promise.all(sitesPromise)
 
-		this.unCheckedProxies = Array.prototype.concat(...notTestedProxyList)
+		this.unCheckedProxies = new Set(Array.prototype.concat(...notTestedProxyList))
 	}
 
 	/**
@@ -197,7 +197,7 @@ class SocksScraper {
 	 * @returns {Promise<SocksScraper.IDefaultProxy[]>}
 	 */
 	async getWorkedSocksProxies(sockType, timeout) {
-		const checkedProxiesPromise = this.unCheckedProxies.map(async (a) => SocksScraper.isAliveProxy(sockType, a, timeout))
+		const checkedProxiesPromise = Array.from(this.unCheckedProxies).map(async (a) => SocksScraper.isAliveProxy(sockType, a, timeout))
 
 		const checkedProxies = await Promise.all(checkedProxiesPromise)
 
