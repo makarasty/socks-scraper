@@ -44,9 +44,10 @@ async function master() {
 	*/
 
 	//  Check my socks5 proxy to see if it works at all
-	const mySocks5Proxy = await SocksScraper.isAliveProxy('socks5', '94.23.220.136:54375', 10000)
-	const isAlive = Boolean(mySocks5Proxy)
+	const mySocks4Proxy = await SocksScraper.isAliveProxy('socks4', '3.127.62.252:80', 10000)
+	const isAlive = Boolean(mySocks4Proxy)
 
-	console.log(`My socks5 proxy is ${isAlive ? 'alive' : 'dead'}`)
+	console.log(`My socks4 proxy is ${isAlive ? 'alive' : 'dead'}`)
+	console.log(mySocks4Proxy);
 }
 master()
