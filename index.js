@@ -197,6 +197,8 @@ class SocksScraper {
 	 * @returns {Promise<SocksScraper.IDefaultProxy[]>}
 	 */
 	async getWorkedSocksProxies(sockType, timeout) {
+		this.clearCheckedProxies()
+
 		const checkedProxiesPromise = Array.from(this.unCheckedProxies).map(async (a) => SocksScraper.isAliveProxy(sockType, a, timeout))
 
 		const checkedProxies = await Promise.all(checkedProxiesPromise)
